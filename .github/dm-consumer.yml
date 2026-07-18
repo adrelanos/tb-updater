@@ -1,0 +1,11 @@
+## Copyright (C) 2026 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## AI-Assisted
+
+## Per-repo parameters for developer-meta-files consumer workflows, read at
+## workflow runtime. The tb-updater core suite (tb-updater-tests) is a
+## pure-source structural guard for GUI mode, so it needs only pytest -- no Qt,
+## no display. The install-based e2e suite runs from a separate workflow.
+dist-ai-tests:
+  apt-packages: "python3 python3-pytest"
