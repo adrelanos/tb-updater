@@ -4,9 +4,9 @@ include <tunables/global>
 ## Copyright (C) 2024 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-/usr/libexec/tb-updater/version-parser {
+/usr/libexec/tb-updater/version-parser.py {
   ## Python interpreter needs to be able to read the script
-  /usr/libexec/tb-updater/version-parser r,
+  /usr/libexec/tb-updater/version-parser.py r,
   ## Python interpreter needs to be able to load libraries
   /{,usr/}lib{,32,64}/** mr,
   ## We'll only ever need to use temp files for I/O

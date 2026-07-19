@@ -35,7 +35,7 @@ tbbversion() {
       tbb_parser_exit_code tbb_version_max_length tbb_version_length parsed_version
 
    command -v printf >/dev/null
-   command -v /usr/libexec/tb-updater/version-parser >/dev/null
+   command -v /usr/libexec/tb-updater/version-parser.py >/dev/null
    command -v sanitize-string >/dev/null
    command -v unicode-show >/dev/null
    command -v append >/dev/null
@@ -68,7 +68,7 @@ tbbversion() {
    ## Global variable, expected to be set by the caller
    ## stdout and stderr redirected to /dev/null in case the version-parser gets exploited to prevent it from echoing malicious advice.
    ## $RecommendedTBBVersions file should have a maximum size of 2 MB. This is enforced at update-torbrowser level.
-   2>/dev/null >/dev/null /usr/libexec/tb-updater/version-parser --quiet "${tbb_version_remote_file}" "${tbb_version_output_file}" || tbb_parser_exit_code="$?"
+   2>/dev/null >/dev/null /usr/libexec/tb-updater/version-parser.py --quiet "${tbb_version_remote_file}" "${tbb_version_output_file}" || tbb_parser_exit_code="$?"
 
    case "${tbb_parser_exit_code}" in
       0)
