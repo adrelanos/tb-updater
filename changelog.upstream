@@ -1,3 +1,69 @@
+commit c91fa8a93571d7e651e08f5c01f90103c66fbe4e
+Merge: 1ff5ec6 c70d10a
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 21 06:26:45 2026 -0400
+
+    Merge remote-tracking branch 'org-ai-assisted/master'
+
+commit c70d10abaf6d4e00e036451d5364681e63969e6f
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Sun Jul 19 04:13:24 2026 -0400
+
+    tb-updater: drop version-parser compat symlink, use version-parser.py (#25)
+
+    Removes the version-parser compatibility symlink, points the
+    version-validator caller and update-torbrowser at version-parser.py, and
+    renames+repaths the AppArmor profile to
+    usr.libexec.tb-updater.version-parser.py so confinement still attaches
+    after the rename.
+
+    AI-Assisted
+
+    ---------
+
+    Co-authored-by: claude (dev95 d7769525-599d-4781-9f2c-f21aa34d292d) <noreply@anthropic.com>
+
+commit b196138908dff4f3d7524f8efd5fd84e16d2595e
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Sat Jul 18 21:58:24 2026 -0400
+
+    tb-updater: give python libexec scripts a .py extension so Coverity captures them
+
+    Rename each extensionless #!/usr/bin/python3 script under usr/libexec to
+    <name>.py (the real source Coverity's buildless capture recognizes) and
+    leave a relative symlink at the old name, so the installed command name and
+    every /usr/libexec/... caller keep working unchanged.
+
+    AI-Assisted
+
+commit 71b56571d131f790302e5a0a36f0744e6c15d941
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Sat Jul 18 20:00:47 2026 -0400
+
+    Coverity: point CI at the org-ai-assisted-tb-updater project
+
+commit f8a312d4582cf7d5fd541d934c42059cea25b749
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Sat Jul 18 20:00:44 2026 -0400
+
+    Add consumer-coverity.yml (opt into Coverity Scan)
+
+commit 72ac8f7341bd01f81ad7e8c3166835b1fdcfa196
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Sat Jul 18 08:12:32 2026 -0400
+
+    CI: opt into dist-ai tests + scanners; move e2e suite to dist-ai (#24)
+
+    Runs the dist-ai tb-updater-tests --core GUI-mode wiring guard on every PR, moves the signature-cache self-test + make-fixture into the dist-ai e2e suite (with a new --input gui end-to-end scenario), adds Bandit + CodeQL, and thins the in-repo tests to the root-only sandbox-resume regression. AGENTS.md gains a sparse Tests pointer.
+
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
+commit 1ff5ec61be78f4ce539b469cb6415709b6e5818c
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 7 10:01:27 2026 +0000
+
+    bumped changelog version
+
 commit 4dfe04aef14cb35b8a352a9e27901ed9f3b030cc
 Author: Patrick Schleizer <adrelanos@whonix.org>
 Date:   Sat Jul 4 16:06:23 2026 -0400
