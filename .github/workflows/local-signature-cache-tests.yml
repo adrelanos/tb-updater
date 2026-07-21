@@ -1,16 +1,17 @@
-## Comprehensive self-test for update-torbrowser's signature-freshness
-## cache logic. Exercises every cache state transition the bug-fix series
-## on the downstream branch introduced (fresh install, cache hit,
-## cross-context fallback, rejected tampered cache, rejected out-of-bounds
-## cache, rejected invalid signature) and every wrapper (update-torbrowser,
-## update-mullvadbrowser, update-i2pbrowser).
+## End-to-end tests for update-torbrowser, run in a Debian trixie container.
 ##
-## Runs in a Debian trixie container. genmkfile, helper-scripts, and
-## msgcollector are installed from their upstream Kicksecure git repositories
-## using the project's own genmkfile install flow. No deb.kicksecure.com apt
-## repo is added.
+## The signature-freshness cache scenarios, the fixture generator, and the new
+## '--input gui' end-to-end scenario now live in the dist-ai tb-updater-tests
+## suite (github.com/org-ai-assisted/dist-ai), driven here as the unprivileged
+## 'tbtest' account against the installed update-torbrowser. The sandbox-resume
+## regression stays in-tree because it must run as root and needs the
+## 'tb-updater' system account.
+##
+## genmkfile, helper-scripts, and msgcollector are installed from their upstream
+## Kicksecure git repositories using the project's own genmkfile install flow.
+## No deb.kicksecure.com apt repo is added.
 
-name: self-test
+name: e2e + sandbox-resume
 
 on:
   push:
@@ -27,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  self-test:
+  e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
@@ -57,13 +58,13 @@ jobs:
           cd /tmp/msgcollector
           sudo genmkfile install
 
-      - name: Install tb-updater runtime dependencies from Debian
+      - name: Install tb-updater runtime + test dependencies from Debian
         run: |
           set -eux
           export DEBIAN_FRONTEND=noninteractive
           ## faketime is used by make-fixture --signed-at for the
-          ## "signature too old" negative scenario.
-          ## acl provides setfacl, which sandbox-update-torbrowser
+          ## "signature too old" negative scenario (a required check, not
+          ## skipped). acl provides setfacl, which sandbox-update-torbrowser
           ## requires at script-load time ('has setfacl').
           apt-get install -y --no-install-recommends \
             sq sqop libarchive-tools safe-rm \
@@ -75,6 +76,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Checkout dist-ai (test suites)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: ${{ github.repository_owner }}/dist-ai
+          path: _dist-ai
+          persist-credentials: false
+
       - name: Install tb-updater from checkout
         run: |
           set -eux
@@ -84,27 +92,29 @@ jobs:
         run: |
           set -eux
           adduser --disabled-password --gecos '' tbtest
-          ## The test scripts live in the repo checkout. tbtest needs to
-          ## be able to reach them through the working tree.
+          ## The e2e gui scenario swaps the root-owned msgcollector dialogs for
+          ## auto-confirm stubs, so tbtest needs passwordless sudo (a required
+          ## capability; the scenario fails rather than skips without it).
+          printf '%s\n' 'tbtest ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tbtest
+          chmod 0440 /etc/sudoers.d/tbtest
+          ## tbtest must be able to reach the checkouts through the working tree.
           repo_path="$(pwd)"
           while [ "$repo_path" != "/" ]; do
             chmod o+rx "$repo_path"
             repo_path="$(dirname -- "$repo_path")"
           done
+          chmod -R o+rX _dist-ai
           chown -R tbtest:tbtest .github/ci
 
-      - name: Smoke-test make-fixture
+      - name: Run dist-ai tb-updater e2e suite (all scenarios, no skips)
         run: |
           set -eux
-          sudo -u tbtest env CI=true .github/ci/make-fixture /tmp/smoke-fix
-          sudo -u tbtest sqop verify \
-            /tmp/smoke-fix/99.0.0/tor-browser-linux-x86_64-99.0.0.tar.xz.asc \
-            /tmp/smoke-fix/test-key.asc \
-            < /tmp/smoke-fix/99.0.0/tor-browser-linux-x86_64-99.0.0.tar.xz
-
-      - name: Run self-test (all scenarios)
-        run: |
-          sudo -u tbtest env CI=true .github/ci/self-test -v
+          sudo -u tbtest env \
+            GITHUB_ACTIONS=true CI=true \
+            PATH=/usr/local/bin:/usr/bin:/bin \
+            "${GITHUB_WORKSPACE}/_dist-ai/usr/bin/dist-ai-tests-all" \
+            --e2e --component tb-updater --component-root "${GITHUB_WORKSPACE}" \
+            --timeout-heavy 900
 
       - name: Create tb-updater system user (mirrors tb-updater postinst)
         ## genmkfile install copies files but does not execute the
@@ -113,10 +123,6 @@ jobs:
         ## default. sandbox-update-torbrowser hard-requires both. The
         ## adduser command below is taken verbatim from
         ## debian/tb-updater.postinst's create_tb_updater_user_account.
-        ##
-        ## TODO: Maybe instead, change how we install tb-updater so
-        ## that the postinst is run? That way we keep a single source
-        ## of truth for this.
         run: |
           set -eux
           adduser --home /var/lib/tb-updater/work --quiet --system --group tb-updater || true
@@ -127,7 +133,8 @@ jobs:
         ## sandbox-update-torbrowser is the postinst entry point and
         ## must run as root, so this scenario does not go through the
         ## unprivileged 'tbtest' account that the file://-fixture
-        ## tests use.
+        ## tests use. It stays in-tree because dist-ai's checkout-based
+        ## runner cannot provide the root + system-account environment.
         run: |
           env CI=true .github/ci/test-sandbox-resume
 
