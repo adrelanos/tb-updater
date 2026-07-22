@@ -66,10 +66,23 @@ jobs:
           ## "signature too old" negative scenario (a required check, not
           ## skipped). acl provides setfacl, which sandbox-update-torbrowser
           ## requires at script-load time ('has setfacl').
+          ##
+          ## The '--input gui' scenario drives the REAL msgcollector dialogs
+          ## (no stubbing) under a headless Wayland compositor:
+          ##   labwc         wlroots compositor, headless backend (no GPU) --
+          ##                 the only kind that implements the virtual-keyboard
+          ##                 protocol wtype needs to reach a separate-process
+          ##                 Qt client;
+          ##   wtype         sends Alt+Y to confirm each yes/no dialog;
+          ##   qtwayland5    the Qt 'wayland' platform plugin the dialogs load;
+          ##   python3-pyqt5 the dialogs' toolkit (also pulled by msgcollector,
+          ##                 pinned here so the gui scenario cannot silently
+          ##                 lose it).
           apt-get install -y --no-install-recommends \
             sq sqop libarchive-tools safe-rm \
             curl jq psmisc pv iproute2 python3 \
-            faketime acl
+            faketime acl \
+            labwc wtype qtwayland5 python3-pyqt5
 
       - name: Checkout tb-updater
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -92,11 +105,11 @@ jobs:
         run: |
           set -eux
           adduser --disabled-password --gecos '' tbtest
-          ## The e2e gui scenario swaps the root-owned msgcollector dialogs for
-          ## auto-confirm stubs, so tbtest needs passwordless sudo (a required
-          ## capability; the scenario fails rather than skips without it).
-          printf '%s\n' 'tbtest ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tbtest
-          chmod 0440 /etc/sudoers.d/tbtest
+          ## The e2e gui scenario needs no privilege: it drives the REAL
+          ## msgcollector dialogs under a private headless Wayland compositor
+          ## (labwc + wtype) as tbtest, mutating nothing on the system. The old
+          ## stub-swap approach needed passwordless sudo to overwrite the
+          ## root-owned dialogs; that is gone, so tbtest gets no sudo.
           ## tbtest must be able to reach the checkouts through the working tree.
           repo_path="$(pwd)"
           while [ "$repo_path" != "/" ]; do
