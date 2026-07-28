@@ -1,3 +1,102 @@
+commit 35fd3564bafce896bf6cfbde858ae328588b4e4b
+Merge: 716d65a 5a1ebd5
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 28 08:19:45 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/org-ai-assisted/master'
+
+commit 5a1ebd5da83249c4a06f7e40fedb4ac05d190a13
+Author: claude <noreply@anthropic.com>
+Date:   Tue Jul 28 06:17:20 2026 -0400
+
+    consumer-codex-review: drop OPENAI_API_KEY forward to the disabled reusable
+
+    Propagates org-ai-assisted/developer-meta-files#167. The reusable is a no-op
+    stub (job 'if: false') and no longer declares an OPENAI_API_KEY secret;
+    forwarding an undeclared secret is rejected by GitHub at workflow startup
+    (startup_failure). Dropping the forward lets the no-op run green; Codex review
+    stays cleanly disabled.
+
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
+commit 716d65a229ce70d60e299644c5323bf41a016d42
+Merge: b0ef414 5565d54
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Thu Jul 23 08:19:54 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/org-ai-assisted/master'
+
+commit 5565d540fbba9756bb8e7719dec4d9a14773d959
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Wed Jul 22 10:34:52 2026 -0400
+
+    e2e workflow: install the headless-Wayland stack for the de-stubbed gui scenario (#27)
+
+    ## What
+
+    The dist-ai tb-updater e2e `--input gui` scenario no longer swaps the
+    root-owned msgcollector dialogs for bash auto-confirm stubs. It runs
+    `update-torbrowser --input gui` under `wl-headless-run`, driving the
+    **real** `tb_updater_gui.py` + `generic_gui_message.py` dialogs on a
+    private headless **labwc** (wlroots) compositor and confirming them with
+    **wtype** under the real `wayland` Qt plugin.
+
+    This installs that stack in the `e2e + sandbox-resume` workflow:
+    - **labwc** - headless wlroots compositor (the only kind that implements
+    the virtual-keyboard protocol `wtype` needs to reach a separate-process
+    Qt client; weston's headless backend has no input path);
+    - **wtype** - sends `Alt+Y` to confirm each yes/no dialog;
+    - **qtwayland5** - the Qt `wayland` platform plugin the dialogs load;
+    - **python3-pyqt5** - pinned so the gui scenario cannot silently lose
+    its toolkit.
+
+    And it **drops the passwordless-sudo grant** for the unprivileged
+    `tbtest` account: that existed only so the old scenario could overwrite
+    the root-owned dialogs with stubs. The Wayland approach runs the real
+    dialogs as `tbtest` and mutates nothing, so `tbtest` now gets no sudo
+    (minimal privilege).
+
+    ## Paired changes
+
+    - dist-ai `run-e2e` de-stub + `wl-headless-run` helper
+    (org-ai-assisted/dist-ai master).
+    - msgcollector Wayland Qt-platform guard:
+    org-ai-assisted/msgcollector#35.
+
+    ## Tested
+
+    The full e2e gui scenario passes end-to-end in a headless sandbox
+    (download -> verify -> extract -> install with the real dialogs
+    confirmed via wtype).
+
+    Co-Authored-By: Claude Opus 4.8
+
+    Co-authored-by: claude (dev100 03987f25-26a2-4e00-807f-e46c67d5d062) <noreply@anthropic.com>
+
+commit 162f36a17f2283a2733761bd25a079d63f7919df
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Wed Jul 22 10:21:27 2026 -0400
+
+    consumer-claude-code: forward CLAUDE_CODE_OAUTH_TOKEN (claude review OAuth port)
+
+commit e4df6095e0e9bce5c6968ddd73c897048c917524
+Author: assisted-by-ai (Bot Account) (Machine Account) <228987186+assisted-by-ai@users.noreply.github.com>
+Date:   Tue Jul 21 08:22:47 2026 -0400
+
+    sandbox-resume test: run the dist-ai integration suite, drop the in-tree copy (#26)
+
+    The root-only sandbox-resume regression moved to dist-ai as the tb-updater-tests-sandbox-resume integration suite. Replace the inline .github/ci/test-sandbox-resume step with dist-ai-tests-all --integration --component tb-updater (run as root), and delete the in-tree script + obsolete chown. e2e validated green.
+
+    AI-Assisted
+
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
+commit b0ef414425fbcabba19475bce2218cbaa1bbc1ec
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 21 11:11:09 2026 +0000
+
+    bumped changelog version
+
 commit c91fa8a93571d7e651e08f5c01f90103c66fbe4e
 Merge: 1ff5ec6 c70d10a
 Author: Patrick Schleizer <adrelanos@whonix.org>
