@@ -3,15 +3,24 @@
 ## Copyright (C) 2012 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -e
-set -x
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
-mydir="$( cd "$( dirname "$0" )" && pwd )"
-cd "${mydir}"
+mydir="$( cd -- "$( dirname -- "$0" )" && pwd )"
+cd -- "${mydir}"
 cd ..
 cd ..
 cd ..
 
+## sets: tbbversion, tbb_version_stripped, tbb_recommended_versions_error
+# shellcheck source=../../libexec/tb-updater/version-validator
+## Resolved relative to this script, which shellcheck does not do from the
+## repository root the gate runs in. R-080 requires the relative spelling.
+# shellcheck disable=SC1091
 source ./usr/libexec/tb-updater/version-validator
 
 expected_version_list=(
@@ -32,6 +41,9 @@ expected_error_list=(
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser output does not look like a valid version number.)'
 )
 
+## tbbversion and the two result variables come from the sourced
+## version-validator above, which shellcheck cannot follow here.
+# shellcheck disable=SC2154
 for idx in "${!expected_version_list[@]}"; do
   disp_idx=$(( idx + 1 ))
 

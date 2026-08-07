@@ -5,11 +5,15 @@
 
 ## cp -r /home/user/.cache/tb /home/user/.cache/tb_
 
-set -e
+set -o errexit
+set -o nounset
 set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
-mydir="$( cd "$( dirname "$0" )" && pwd )"
-cd "$mydir"
+mydir="$( cd -- "$( dirname -- "$0" )" && pwd )"
+cd -- "${mydir}"
 cd ../../../
 
 export TBB_VERSIONS_FILE_LINK="file:///home/user/.cache/tb_/RecommendedTBBVersions"
