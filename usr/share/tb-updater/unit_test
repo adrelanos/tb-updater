@@ -40,7 +40,12 @@ expected_error_list=(
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser failed - file invalid or malicious)'
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser output does not look like a valid version number.)'
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser output failed check_is_not_empty_and_only_one_line test.)'
-  'Rejected invalid RecommendedTBBVersions versions file. (version-parser output does not look like a valid version number.)'
+  ## Case 6 is version '15.0.3' followed by a BEL (0x07) control character. unicode-show
+  ## rejects C0 control characters, and it runs before the version-number
+  ## pattern check, so that is the layer that fires. The security-relevant
+  ## outcome is the same either way and is asserted above: version is UNKNOWN
+  ## and the file is rejected.
+  'Rejected invalid RecommendedTBBVersions versions file. (Non-ASCII characters found in version using unicode-show.)'
 )
 
 ## tbbversion and the two result variables come from the sourced
