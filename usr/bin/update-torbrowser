@@ -190,7 +190,7 @@ tb_error_handler() {
 
    mkdir --parents -- "${tb_user_home}/.cache/${tb_install_folder}" || true
    if test -w "${tb_user_home}/.cache/${tb_install_folder}" ; then
-      append "${tb_user_home}/.cache/${tb_install_folder}/torbrowser_updater_error.log" "${MSG}"
+      append "${tb_user_home}/.cache/${tb_install_folder}/torbrowser_updater_error.log" "${MSG}" || true
    fi
 
    ## In case function output_gui does not exist yet.
@@ -2325,6 +2325,9 @@ Extracting ${tb_title}... This could take a moment..."
       wait "${tar_pid}" || { tar_exit_code="$?" ; true; };
       true "INFO: wait pv_wrapper_pid"
       wait "${pv_wrapper_pid}" || { pv_wrapper_exit_code="$?" ; true; };
+      ## Reaped above; drop the stale pids so a later signal handler cannot
+      ## SIGKILL a reused PID.
+      last_pid_list=""
 
       if [ ! "${pv_exit_code:-}" = "0" ]; then
          tb_tar_exit_code="1"
