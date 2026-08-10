@@ -3,23 +3,34 @@
 ## Copyright (C) 2012 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -o errexit
-set -o nounset
-set -o errtrace
-set -o pipefail
+# shellcheck source=../../../helper-scripts/usr/libexec/helper-scripts/check_runtime.bsh
+source /usr/libexec/helper-scripts/check_runtime.bsh
 
-SCRIPTNAME="$(basename -- "${BASH_SOURCE[0]}")"
-export SCRIPTNAME
+if was_executed "${BASH_SOURCE[0]}"; then
+   set -o errexit
+   set -o nounset
+   set -o errtrace
+   set -o pipefail
+fi
 
-export ICON="/usr/share/icons/icon-pack-dist/tbupdate.ico"
+main() {
+   SCRIPTNAME="$(basename -- "${BASH_SOURCE[0]}")"
+   export SCRIPTNAME
 
-export IDENTIFIER="i2pbrowser-downloader"
-export tb_install_folder="i2pb"
-export tb_install_folder_dot=".i2pb"
-export tb_title="i2p Browser"
-export tb_wiki="i2p_Browser"
-export tb_browser_name="i2p-browser"
-export tb_settings_folder="i2pbrowser.d"
-export tb_bin="i2pbrowser"
+   export ICON="/usr/share/icons/icon-pack-dist/tbupdate.ico"
 
-update-torbrowser "$@"
+   export IDENTIFIER="i2pbrowser-downloader"
+   export tb_install_folder="i2pb"
+   export tb_install_folder_dot=".i2pb"
+   export tb_title="i2p Browser"
+   export tb_wiki="i2p_Browser"
+   export tb_browser_name="i2p-browser"
+   export tb_settings_folder="i2pbrowser.d"
+   export tb_bin="i2pbrowser"
+
+   update-torbrowser "$@"
+}
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   main "$@"
+fi

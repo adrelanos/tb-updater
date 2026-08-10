@@ -3,16 +3,27 @@
 ## Copyright (C) 2019 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -x
-set -o errexit
-set -o nounset
-set -o errtrace
-set -o pipefail
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/check_runtime.bsh
+source /usr/libexec/helper-scripts/check_runtime.bsh
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   set -x
+   set -o errexit
+   set -o nounset
+   set -o errtrace
+   set -o pipefail
+fi
 
 if [ -f /usr/libexec/helper-scripts/pre.bsh ]; then
    source /usr/libexec/helper-scripts/pre.bsh
 fi
 
-## https://github.com/QubesOS/build-issues/issues/1769
-mv /etc/resolv.conf /etc/resolv.conf.tb-updater-bak
-mv /etc/resolv.conf.whonix-orig /etc/resolv.conf
+main() {
+   ## https://github.com/QubesOS/build-issues/issues/1769
+   mv /etc/resolv.conf /etc/resolv.conf.tb-updater-bak
+   mv /etc/resolv.conf.whonix-orig /etc/resolv.conf
+}
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   main "$@"
+fi
