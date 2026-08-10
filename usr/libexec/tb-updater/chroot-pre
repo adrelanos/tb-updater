@@ -14,11 +14,14 @@ if was_executed "${BASH_SOURCE[0]}"; then
    set -o pipefail
 fi
 
-if [ -f /usr/libexec/helper-scripts/pre.bsh ]; then
-   source /usr/libexec/helper-scripts/pre.bsh
-fi
-
 main() {
+   ## Sourced INSIDE main (not at top level): pre.bsh enables errtrace, installs
+   ## ERR/EXIT traps and loads config, so at top level it would leak into a shell
+   ## that sources this script. It is runtime setup, needed only when executing.
+   if [ -f /usr/libexec/helper-scripts/pre.bsh ]; then
+      source /usr/libexec/helper-scripts/pre.bsh
+   fi
+
    ## https://github.com/QubesOS/build-issues/issues/1769
    mv /etc/resolv.conf /etc/resolv.conf.tb-updater-bak
    mv /etc/resolv.conf.whonix-orig /etc/resolv.conf
