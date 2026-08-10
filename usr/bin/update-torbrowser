@@ -635,11 +635,13 @@ tb_config_folder_parser() {
    true "tb_settings_folder: ${tb_settings_folder}"
    ## $tb_settings_folder is an environment variable used to build paths
    ## that get 'source'd, so an unvalidated value could traverse out of
-   ## /etc or /usr/local/etc into arbitrary .conf files. Restrict to the
-   ## shape the wrappers actually use: lowercase letters, digits, dot,
-   ## hyphen, underscore. Anything else falls back to the Tor Browser
-   ## default.
-   if ! [[ "${tb_settings_folder:-}" =~ ^[a-z0-9._-]+$ ]]; then
+   ## /etc or /usr/local/etc into arbitrary .conf files. validate_safe_filename
+   ## (helper-scripts) rejects a path separator, a bare '.' or '..', and any
+   ## '..' component -- the traversal shapes -- while still accepting the
+   ## 'torbrowser.d' shape the wrappers use. Anything else falls back to the
+   ## Tor Browser default. (A single-component folder name is a safe filename
+   ## for this purpose; helper-scripts ships no separate folder validator.)
+   if ! validate_safe_filename tb_settings_folder; then
       log warn "Ignoring unsafe tb_settings_folder='${tb_settings_folder}', falling back to 'torbrowser.d'."
       tb_settings_folder="torbrowser.d"
    fi
