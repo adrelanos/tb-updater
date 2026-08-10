@@ -69,7 +69,7 @@ tbbversion() {
    if [ ! -f "${RecommendedTBBVersions}" ]; then
       local MSG="${SCRIPTNAME} tbbversion: RecommendedTBBVersions: '${RecommendedTBBVersions}' does not exist."
       stecho "${MSG}"
-      error "${MSG}"
+      log error "${MSG}"
       return 1
    fi
 
@@ -279,7 +279,7 @@ tbbversion_checks_installed() {
       return 0
    fi
 
-   if ! parsed_version="$(jq -r ".version" <<< "${tb_local_version_contents}")" ; then
+   if ! parsed_version="$(jq -er '.version? | select(type == "string" and length > 0)' <<< "${tb_local_version_contents}")" ; then
       tbb_locally_installed_version="Parsing version file (part 1) <code>${tb_local_version_file}</code> failed. Please report this tb-updater Bug!"
       return 0
    fi

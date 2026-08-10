@@ -188,10 +188,8 @@ tb_error_handler() {
    [ -n "${tb_user_home:-}" ] || tb_user_home=~
    [ -n "${tb_install_folder:-}" ] || tb_install_folder="tb"
 
+   mkdir --parents -- "${tb_user_home}/.cache/${tb_install_folder}" || true
    if test -w "${tb_user_home}/.cache/${tb_install_folder}" ; then
-      mkdir --parents -- "${tb_user_home}/.cache/${tb_install_folder}"
-   fi
-   if test -w "${tb_user_home}/.cache/${tb_install_folder}/torbrowser_updater_error.log" ; then
       append "${tb_user_home}/.cache/${tb_install_folder}/torbrowser_updater_error.log" "${MSG}"
    fi
 
@@ -214,6 +212,11 @@ tb_error_handler() {
    tb_exit_function 1
 }
 
+## Initialize so tb_error_handler can reference these even if the ERR trap
+## fires before they are assigned (script runs under 'set -o nounset').
+output_opts=()
+progressbaridx=""
+
 trap "tb_error_handler" ERR
 
 download_fail_help_set() {
@@ -227,7 +230,7 @@ download_fail_help_set() {
 </ul>
 <p>Recommendations:</p>
 <ul>
-  <li>Re-run <code>${SCRIPTNAME}</code> with or without <code>--resume<c/ode> in terminal. For example: <code>${SCRIPTNAME} --resume</code></li>
+  <li>Re-run <code>${SCRIPTNAME}</code> with or without <code>--resume</code> in terminal. For example: <code>${SCRIPTNAME} --resume</code></li>
   <li>For more information, see the <a href='${tb_documentation_base_url_clearnet}/wiki/${tb_wiki}#Troubleshooting'>${tb_documentation_base_url_clearnet}/wiki/${tb_wiki}#Troubleshooting</a>.</li>
 </ul>"
 }
@@ -349,12 +352,14 @@ tb_ex_funct() {
    if [ "${last_pid_list:-}" = "" ]; then
       true
    else
-      local childpids_list childpid_item
+      local childpids_list childpid_item pid
       for pid in ${last_pid_list}; do
          childpids_list=$(pgrep --parent "${pid}")
          for childpid_item in ${childpids_list} ; do
             pkill --signal sigkill --parent "${childpid_item}" &>/dev/null || true
+            kill -s SIGKILL -- "${childpid_item}" &>/dev/null || true
          done
+         kill -s SIGKILL -- "${pid}" &>/dev/null || true
       done
    fi
 
@@ -858,7 +863,7 @@ tb_preparation() {
          [ -n "${ARCH_DOWNLOAD:-}" ] || ARCH_DOWNLOAD="linux-aarch64"
       else
          [ -n "${ARCH_DOWNLOAD:-}" ] || ARCH_DOWNLOAD="linux-${ARCH}"
-         log warning "Guessing. Setting ARCH_DOWNLOAD to '${ARCH_DOWNLOAD}'. If functional, this is probably OK."
+         log warn "Guessing. Setting ARCH_DOWNLOAD to '${ARCH_DOWNLOAD}'. If functional, this is probably OK."
       fi
 
       log notice "ARCH_DOWNLOAD '${ARCH_DOWNLOAD}' detected."
@@ -915,7 +920,7 @@ tb_preparation() {
          local MSG="uwt_tool: Can not find curl. Please report this bug!"
          output_gui "${output_opts[@]}" --messagex --typex "error" --message "${MSG}"
          log error "${MSG}"
-         return 0
+         tb_exit_function 1
       fi
    fi
 
@@ -1427,6 +1432,9 @@ Otherwise updating <code>${tb_title}</code> in this Template will not result in 
    question="Download now?"
 
    local updater_vs_downloader_msg confirmation_screen_learn_more_link
+   ## Set unconditionally so it stays defined under 'set -o nounset' when not
+   ## running inside a Qubes Template.
+   local qubes_running_inside_template_vm_msg=""
 
    updater_vs_downloader_msg="\
 If you would like to keep your browser profile and update rather than re-downloading ${tb_title}, \
@@ -1478,7 +1486,7 @@ To update ${tb_title} inside existing App Qubes, please update ${tb_title} insid
             up_to_date_or_not_text="<b><u>WARNING: Looks like a downgrade attack!</u></b>"
             re_install_or_install_text="Please close ${tb_title} if you want to (re-)install!"
          else
-            error "Failed to compare versions using dpkg.
+            log error "Failed to compare versions using dpkg.
 <br></br>
 <br></br>tbb_locally_installed_version_detect_success: ${tbb_locally_installed_version_detect_success}"
             tb_exit_function 1
@@ -1543,7 +1551,7 @@ tb_version_processing() {
    fi
 
    if [ "${tbb_version_stripped:-}" = "" ]; then
-      log error "in function tb_version_processing: variable ${tbb_version_stripped} not set!"
+      log error "in function tb_version_processing: variable 'tbb_version_stripped' not set!"
       tb_exit_function 17
    fi
 
@@ -2203,7 +2211,7 @@ Extracting ${tb_title}... This could take a moment..."
    fi
 
    local timeout_after kill_after file_name
-   local lastpid pv_pid pv_wrapper_pid pv_exit_code pv_wrapper_exit_code tb_tar_exit_code MSG
+   local lastpid pv_pid pv_wrapper_pid pv_exit_code tar_exit_code pv_wrapper_exit_code tb_tar_exit_code MSG
    timeout_after="180"
    kill_after="30"
    file_name="${TBB_PACKAGE_FULL_PATH}"
@@ -2226,7 +2234,13 @@ Extracting ${tb_title}... This could take a moment..."
    ## - Because we are also using '--directory "$tb_extract_temp_folder"'
    ## - To remove language specific default folder names such as tor-browser_en-US.
 
+   ## Initialize all exit-code vars unconditionally so the failure-message
+   ## block below can reference them under 'set -o nounset' even on the
+   ## TB_FORCE_INSTALL path, which does not run the pv/tar pipeline.
    tb_tar_exit_code="0"
+   pv_exit_code="0"
+   tar_exit_code="0"
+   pv_wrapper_exit_code="0"
 
    if [ "${TB_FORCE_INSTALL:-}" = "1" ]; then
       timeout \
@@ -2257,13 +2271,9 @@ Extracting ${tb_title}... This could take a moment..."
       # shellcheck disable=SC2090
       export pv_wrapper_command
 
-      local tar_fifo tar_pid pv_wrapper_fifo pv_wrapper_fifo
-      local pv_exit_code tar_exit_code pv_wrapper_exit_code
+      local tar_fifo tar_pid pv_wrapper_fifo
       tar_fifo="${TEMP_DIR}/tar_fifo"
       pv_wrapper_fifo="${TEMP_DIR}/pv_wrapper_fifo"
-      pv_exit_code="0"
-      tar_exit_code="0"
-      pv_wrapper_exit_code="0"
 
       safe-rm --force -- "${tar_fifo}"
       safe-rm --force -- "${pv_wrapper_fifo}"
