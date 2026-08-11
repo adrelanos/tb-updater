@@ -12,13 +12,32 @@
 ## file at a time.
 # shellcheck disable=SC2034,SC2154
 
+## style-ok: no-strict
+## This file is 'source'd by update-torbrowser, so 'set -o errexit' and friends
+## here would change the SOURCING shell's behaviour globally rather than apply
+## to a shell of its own. The sourcer owns its strict-mode settings.
+
+## The source= paths document where these live in the derivative-maker tree.
+## CI checks this repo out ALONE and installs no helper-scripts, so shellcheck
+## can follow neither the relative nor the runtime absolute path there.
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
+# shellcheck disable=SC1091
 source /usr/libexec/helper-scripts/strings.bsh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
+# shellcheck disable=SC1091
+source /usr/libexec/helper-scripts/has.sh
+
+## Resolve version-parser.py next to this file rather than by its installed
+## absolute path, so the test suite can exercise the code from a checkout.
+## Installed, the two resolve to the same file.
+tb_updater_libexec_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+version_parser="${tb_updater_libexec_dir}/version-parser.py"
 
 set_stripped_tbb_version() {
    ## Join all positional arguments into a single raw string. Using "$*"
    ## (not "$@") so shellcheck can see this is a scalar assignment.
    tbb_version_raw="$*"
-   tbb_version_stripped="$(sanitize-string -- 20 "$tbb_version_raw")"
+   tbb_version_stripped="$(sanitize-string -- 20 "${tbb_version_raw}")"
 }
 
 hexdump_file() {
@@ -26,7 +45,7 @@ hexdump_file() {
    printf '%s\n' "hexdump:"
    printf '%s\n' "----------"
    hex_dumped="$(timeout --kill-after=2 2 hexdump "$1")" || true
-   stecho "$hex_dumped"
+   stecho "${hex_dumped}"
    printf '%s\n' "----------"
 }
 
@@ -34,22 +53,23 @@ tbbversion() {
    local tbb_version_remote_file tbb_version_output_file \
       tbb_parser_exit_code tbb_version_max_length tbb_version_length parsed_version
 
-   command -v printf >/dev/null
-   command -v /usr/libexec/tb-updater/version-parser.py >/dev/null
-   command -v sanitize-string >/dev/null
-   command -v unicode-show >/dev/null
-   command -v append >/dev/null
-   command -v grep-find-unicode-wrapper >/dev/null
+   ## 'printf' is a bash builtin and is deliberately not listed: 'has' resolves
+   ## via 'command -v', which returns the bare name for a builtin rather than a
+   ## path, so testing it would always fail.
+   has sanitize-string unicode-show append grep-find-unicode-wrapper
+   ## 'has' resolves command NAMES via PATH; version_parser is an absolute
+   ## path, so it is checked directly.
+   test -x "${version_parser}"
 
    ## fallback
    set_stripped_tbb_version "UNKNOWN"
    tbb_recommended_versions_error=""
 
    ## Example see /usr/share/tb-updater/unit-test/RecommendedTBBVersions
-   if [ ! -f "$RecommendedTBBVersions" ]; then
-      local MSG="$SCRIPTNAME tbbversion: RecommendedTBBVersions: '$RecommendedTBBVersions' does not exist."
-      stecho "$MSG"
-      error "$MSG"
+   if [ ! -f "${RecommendedTBBVersions}" ]; then
+      local MSG="${SCRIPTNAME} tbbversion: RecommendedTBBVersions: '${RecommendedTBBVersions}' does not exist."
+      stecho "${MSG}"
+      log error "${MSG}"
       return 1
    fi
 
@@ -68,7 +88,7 @@ tbbversion() {
    ## Global variable, expected to be set by the caller
    ## stdout and stderr redirected to /dev/null in case the version-parser gets exploited to prevent it from echoing malicious advice.
    ## $RecommendedTBBVersions file should have a maximum size of 2 MB. This is enforced at update-torbrowser level.
-   2>/dev/null >/dev/null /usr/libexec/tb-updater/version-parser.py --quiet "${tbb_version_remote_file}" "${tbb_version_output_file}" || tbb_parser_exit_code="$?"
+   2>/dev/null >/dev/null "${version_parser}" --quiet "${tbb_version_remote_file}" "${tbb_version_output_file}" || tbb_parser_exit_code="$?"
 
    case "${tbb_parser_exit_code}" in
       0)
@@ -132,11 +152,11 @@ tbbversion() {
          ## on the consumer side. Passing the explicit cap here makes the
          ## bound self-contained so a future refactor of either side cannot
          ## silently drop it.
-         parsed_version="$(sanitize-string -- "$tbb_version_max_length" "$parsed_version")"
+         parsed_version="$(sanitize-string -- "${tbb_version_max_length}" "${parsed_version}")"
          parsed_version="${parsed_version#"${parsed_version%%[![:space:]]*}"}" ## remove leading whitespace characters
          parsed_version="${parsed_version%"${parsed_version##*[![:space:]]}"}" ## remove trailing whitespace characters
 
-         if [ -z "$parsed_version" ]; then
+         if [ -z "${parsed_version}" ]; then
             set_stripped_tbb_version "UNKNOWN"
             tbb_recommended_versions_error="Rejected invalid RecommendedTBBVersions versions file. \
 (version-parser output empty.)"
@@ -162,7 +182,7 @@ tbbversion() {
          ## Regex-validate version to be absolutely sure it's valid.
          ## Should match versions like 14.0.2, 14.0a9, and 13.0.9-arm64, but
          ## reject malformed versions like 14.5:8 or 1.2..3.
-         if ! [[ "$parsed_version" =~ ^([0-9a-z]+\.)+[0-9a-z]+(-arm64|-armhf)?$ ]]; then
+         if ! [[ "${parsed_version}" =~ ^([0-9a-z]+\.)+[0-9a-z]+(-arm64|-armhf)?$ ]]; then
             set_stripped_tbb_version "UNKNOWN"
             tbb_recommended_versions_error="Rejected invalid RecommendedTBBVersions versions file. \
 (version-parser output does not look like a valid version number.)"
@@ -172,7 +192,7 @@ tbbversion() {
             return 0
          fi
 
-         set_stripped_tbb_version "$parsed_version"
+         set_stripped_tbb_version "${parsed_version}"
 
          safe-rm -- "${tbb_version_remote_file}"
          safe-rm -- "${tbb_version_output_file}"
@@ -224,9 +244,7 @@ tbbversion() {
 tbbversion_installed() {
    ## Getting currently installed version number
 
-   command -v xargs >/dev/null
-   command -v printf >/dev/null
-   command -v jq >/dev/null
+   has xargs jq
 
    ## Fallbacks.
    tbb_locally_installed_version="UNKNOWN. Please report this tb-updater Bug!"
@@ -234,37 +252,43 @@ tbbversion_installed() {
 
    tbbversion_checks_installed
 
-   if [ "$tbb_locally_installed_version_detect_success" = "true" ]; then
+   if [ "${tbb_locally_installed_version_detect_success}" = "true" ]; then
       ## Success. Real version number. Limit to 20 characters.
-      tbb_locally_installed_version_stripped="$(sanitize-string -- 20 "$tbb_locally_installed_version")"
+      tbb_locally_installed_version_stripped="$(sanitize-string -- 20 "${tbb_locally_installed_version}")"
       return 0
    fi
 
    ## Failure. Longer error message.
-   tbb_locally_installed_version_stripped="$(sanitize-string -- 200 "$tbb_locally_installed_version")"
+   tbb_locally_installed_version_stripped="$(sanitize-string -- 200 "${tbb_locally_installed_version}")"
 }
 
 tbbversion_checks_installed() {
-   if [ ! -d "$tbb_folder" ]; then
-      tbb_locally_installed_version="None installed. (Folder <code>$tbb_folder</code> does not exist.)"
+   if [ ! -d "${tbb_folder}" ]; then
+      tbb_locally_installed_version="None installed. (Folder <code>${tbb_folder}</code> does not exist.)"
       return 0
    fi
 
-   if [ ! -f "$tb_local_version_file" ]; then
-      tbb_locally_installed_version="Version file not found. (File <code>$tb_local_version_file</code> does not exist.) Please report this tb-updater Bug!"
+   if [ ! -f "${tb_local_version_file}" ]; then
+      tbb_locally_installed_version="Version file not found. (File <code>${tb_local_version_file}</code> does not exist.) Please report this tb-updater Bug!"
       return 0
    fi
 
    local tb_local_version_contents parsed_version
-   tb_local_version_contents="$(stcat "$tb_local_version_file")" || \
-      { tbb_locally_installed_version="Reading version file <code>$tb_local_version_file</code> failed. Please report this tb-updater Bug!" ; return 0; };
+   if ! tb_local_version_contents="$(stcat "${tb_local_version_file}")" ; then
+      tbb_locally_installed_version="Reading version file <code>${tb_local_version_file}</code> failed. Please report this tb-updater Bug!"
+      return 0
+   fi
 
-   parsed_version="$(jq -r ".version" <<< "$tb_local_version_contents")" || \
-      { tbb_locally_installed_version="Parsing version file (part 1) <code>$tb_local_version_file</code> failed. Please report this tb-updater Bug!" ; return 0; };
+   if ! parsed_version="$(jq -er '.version? | select(type == "string" and length > 0)' <<< "${tb_local_version_contents}")" ; then
+      tbb_locally_installed_version="Parsing version file (part 1) <code>${tb_local_version_file}</code> failed. Please report this tb-updater Bug!"
+      return 0
+   fi
 
-   parsed_version="$(stecho "$parsed_version" | xargs -- printf '%s\n')" || \
-      { tbb_locally_installed_version="Parsing version file (part 2) <code>$tb_local_version_file</code> failed. Please report this tb-updater Bug!" ; return 0; };
+   if ! parsed_version="$(stecho "${parsed_version}" | xargs -- printf '%s\n')" ; then
+      tbb_locally_installed_version="Parsing version file (part 2) <code>${tb_local_version_file}</code> failed. Please report this tb-updater Bug!"
+      return 0
+   fi
 
-   tbb_locally_installed_version="$parsed_version"
+   tbb_locally_installed_version="${parsed_version}"
    tbb_locally_installed_version_detect_success="true"
 }

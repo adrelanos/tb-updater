@@ -3,10 +3,23 @@
 ## Copyright (C) 2019 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -x
-set -o errexit
-set -o nounset
-set -o errtrace
-set -o pipefail
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/check_runtime.bsh
+source /usr/libexec/helper-scripts/check_runtime.bsh
 
-update-torbrowser --input gui
+if was_executed "${BASH_SOURCE[0]}"; then
+   set -x
+   set -o errexit
+   set -o nounset
+   set -o errtrace
+   set -o pipefail
+   shopt -s inherit_errexit
+   shopt -s shift_verbose
+fi
+
+main() {
+   update-torbrowser --input gui
+}
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   main "$@"
+fi
