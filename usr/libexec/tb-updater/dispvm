@@ -3,111 +3,126 @@
 ## Copyright (C) 2019 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -x
-set -o errexit
-set -o nounset
-set -o errtrace
-set -o pipefail
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/check_runtime.bsh
+source /usr/libexec/helper-scripts/check_runtime.bsh
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   set -x
+   set -o errexit
+   set -o nounset
+   set -o errtrace
+   set -o pipefail
+   shopt -s inherit_errexit
+   shopt -s shift_verbose
+fi
 
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
 source /usr/libexec/helper-scripts/strings.bsh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
+source /usr/libexec/helper-scripts/has.sh
 
-## The account "user" fallback is intentional.
-## The sysmaint session is not supposed to run Tor Browser.
-user_name="user"
+main() {
+   ## The account "user" fallback is intentional.
+   ## The sysmaint session is not supposed to run Tor Browser.
+   user_name="user"
 
-if ischroot --default-false ; then
-   exit 0
-fi
-
-if command -v qubesdb-read &>/dev/null ; then
-   qubes_vm_name="$(qubesdb-read /name)"
-   qubes_vm_persistence="$(qubesdb-read /qubes-vm-persistence)"
-   if ! user_name=$(qubesdb-read /default-user) ; then
-      printf '%s\n' "$0: WARNING: failed to run 'qubesdb-read /default-user', falling back to user_name=user"
-      user_name=user
+   if ischroot --default-false ; then
+      exit 0
    fi
-   ## qubesdb is trusted in the Qubes model but the returned value is
-   ## about to be pasted into mkdir/chown/mount path arguments. Reject
-   ## anything that is not a plain POSIX-style account name so a stray
-   ## value cannot traverse out of /home or create mount points at
-   ## attacker-chosen locations.
-   if ! check_valid_linux_user_account_name "$user_name"; then
-      printf '%s\n' "$0: WARNING: qubesdb '/default-user' returned unsafe value '$user_name', falling back to user_name=user"
-      user_name=user
+
+   if has qubesdb-read ; then
+      qubes_vm_name="$(qubesdb-read /name)"
+      qubes_vm_persistence="$(qubesdb-read /qubes-vm-persistence)"
+      if ! user_name=$(qubesdb-read /default-user) ; then
+         printf '%s\n' "$0: WARNING: failed to run 'qubesdb-read /default-user', falling back to user_name=user"
+         user_name=user
+      fi
+      ## qubesdb is trusted in the Qubes model but the returned value is
+      ## about to be pasted into mkdir/chown/mount path arguments. Reject
+      ## anything that is not a plain POSIX-style account name so a stray
+      ## value cannot traverse out of /home or create mount points at
+      ## attacker-chosen locations.
+      if ! check_valid_linux_user_account_name "${user_name}"; then
+         printf '%s\n' "$0: WARNING: qubesdb '/default-user' returned unsafe value '${user_name}', falling back to user_name=user"
+         user_name=user
+      fi
+   else
+      ## Do not do any of this outside of Qubes.
+      exit 0
    fi
-else
-   ## Do not do any of this outside of Qubes.
-   exit 0
+
+   ## Avoid running in Qubes DVM Template.
+   ## https://forums.whonix.org/t/if-tb-updater-storage-path-for-qubes-r4-dispvms/18684
+   if printf '%s\n' "${qubes_vm_name}" | grep -- "-dvm" >/dev/null 2>/dev/null ; then
+      exit 0
+   fi
+
+   if test -f /run/qubes/this-is-templatevm ; then
+      exit 0
+   fi
+
+   ## Do this only in a DispVM.
+   if [ ! "${qubes_vm_persistence}" = "none" ]; then
+      exit 0
+   fi
+
+   if [ ! -d "/home/${user_name}" ]; then
+      exit 0
+   fi
+
+   if [ ! -d /var/cache/tb-binary ]; then
+      exit 0
+   fi
+
+   ## Mount point must be existing to be able to use mount.
+   mkdir --parents -- "/home/${user_name}/.tb"
+   chown -- "${user_name}:${user_name}" "/home/${user_name}/.tb"
+   mkdir --parents -- "/home/${user_name}/.cache/tb"
+   chown -- "${user_name}:${user_name}" "/home/${user_name}/.cache/tb"
+   ## .cache will end up owned by root if it doesn't already exist.
+   ## https://forums.whonix.org/t/home-user-cache-permission-issue-in-recent-updates/21427
+   chown -- "${user_name}:${user_name}" "/home/${user_name}/.cache"
+
+   chown --recursive -- "${user_name}:${user_name}" /var/cache/tb-binary
+   ## Could alternatively do after mounting:
+   #chown --recursive "${user_name}:${user_name}" "/home/${user_name}/.tb"
+   #chown --recursive "${user_name}:${user_name}" "/home/${user_name}/.cache/tb"
+   ## But that would not give any security advantage since changing permissions
+   ## after bind mount will also result in the original folder changing
+   ## permissions.
+
+   if [ -d "/var/cache/tb-binary/.tb" ]; then
+      mount --bind -o nosuid,nodev -- "/var/cache/tb-binary/.tb" "/home/${user_name}/.tb"
+   fi
+   if [ -d "/var/cache/tb-binary/.cache/tb" ]; then
+      mount --bind -o nosuid,nodev -- "/var/cache/tb-binary/.cache/tb" "/home/${user_name}/.cache/tb"
+   fi
+
+   ## results in:
+   # mount | grep -- home
+   # /dev/xvdb on /home type ext4 (rw,nosuid,nodev,noexec,relatime,discard)
+   # /dev/xvda3 on /home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
+   # /dev/xvda3 on /rw/home/user/.tb type ext4 (rw,noatime,discard)
+   # /dev/xvda3 on /home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)
+   # /dev/xvda3 on /rw/home/user/.cache/tb type ext4 (rw,noatime,discard)
+
+   ## Remount with nosuid,nodev.
+   if [ -d "/rw/home/${user_name}/.tb" ]; then
+      mount -o remount,nosuid,nodev -- "/rw/home/${user_name}/.tb"
+   fi
+   if [ -d "/rw/home/${user_name}/.cache/tb" ]; then
+      mount -o remount,nosuid,nodev -- "/rw/home/${user_name}/.cache/tb"
+   fi
+
+   ## results in:
+   # mount | grep -- home
+   # /dev/xvdb on /home type ext4 (rw,nosuid,nodev,noexec,relatime,discard)
+   # /dev/xvda3 on /home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
+   # /dev/xvda3 on /rw/home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
+   # /dev/xvda3 on /home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)
+   # /dev/xvda3 on /rw/home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)
+}
+
+if was_executed "${BASH_SOURCE[0]}"; then
+   main "$@"
 fi
-
-## Avoid running in Qubes DVM Template.
-## https://forums.whonix.org/t/if-tb-updater-storage-path-for-qubes-r4-dispvms/18684
-if printf '%s\n' "$qubes_vm_name" | grep -- "-dvm" >/dev/null 2>/dev/null ; then
-   exit 0
-fi
-
-if test -f /run/qubes/this-is-templatevm ; then
-   exit 0
-fi
-
-## Do this only in a DispVM.
-if [ ! "$qubes_vm_persistence" = "none" ]; then
-   exit 0
-fi
-
-if [ ! -d "/home/$user_name" ]; then
-   exit 0
-fi
-
-if [ ! -d /var/cache/tb-binary ]; then
-   exit 0
-fi
-
-## Mount point must be existing to be able to use mount.
-mkdir --parents -- "/home/$user_name/.tb"
-chown -- "$user_name:$user_name" "/home/$user_name/.tb"
-mkdir --parents -- "/home/$user_name/.cache/tb"
-chown -- "$user_name:$user_name" "/home/$user_name/.cache/tb"
-## .cache will end up owned by root if it doesn't already exist.
-## https://forums.whonix.org/t/home-user-cache-permission-issue-in-recent-updates/21427
-chown -- "$user_name:$user_name" "/home/$user_name/.cache"
-
-chown --recursive -- "$user_name:$user_name" /var/cache/tb-binary
-## Could alternatively do after mounting:
-#chown --recursive "$user_name:$user_name" "/home/$user_name/.tb"
-#chown --recursive "$user_name:$user_name" "/home/$user_name/.cache/tb"
-## But that would not give any security advantage since changing permissions
-## after bind mount will also result in the original folder changing
-## permissions.
-
-if [ -d "/var/cache/tb-binary/.tb" ]; then
-   mount --bind -o nosuid,nodev -- "/var/cache/tb-binary/.tb" "/home/$user_name/.tb"
-fi
-if [ -d "/var/cache/tb-binary/.cache/tb" ]; then
-   mount --bind -o nosuid,nodev -- "/var/cache/tb-binary/.cache/tb" "/home/$user_name/.cache/tb"
-fi
-
-## results in:
-# mount | grep -- home
-# /dev/xvdb on /home type ext4 (rw,nosuid,nodev,noexec,relatime,discard)
-# /dev/xvda3 on /home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
-# /dev/xvda3 on /rw/home/user/.tb type ext4 (rw,noatime,discard)
-# /dev/xvda3 on /home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)
-# /dev/xvda3 on /rw/home/user/.cache/tb type ext4 (rw,noatime,discard)
-
-## Remount with nosuid,nodev.
-if [ -d "/rw/home/$user_name/.tb" ]; then
-   mount -o remount,nosuid,nodev -- "/rw/home/$user_name/.tb"
-fi
-if [ -d "/rw/home/$user_name/.cache/tb" ]; then
-   mount -o remount,nosuid,nodev -- "/rw/home/$user_name/.cache/tb"
-fi
-
-## results in:
-# mount | grep -- home
-# /dev/xvdb on /home type ext4 (rw,nosuid,nodev,noexec,relatime,discard)
-# /dev/xvda3 on /home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
-# /dev/xvda3 on /rw/home/user/.tb type ext4 (rw,nosuid,nodev,noatime,discard)
-# /dev/xvda3 on /home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)
-# /dev/xvda3 on /rw/home/user/.cache/tb type ext4 (rw,nosuid,nodev,noatime,discard)

@@ -3,15 +3,31 @@
 ## Copyright (C) 2012 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -e
+## Keep the command trace: it is this script's diagnostic output.
 set -x
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
-mydir="$( cd "$( dirname "$0" )" && pwd )"
-cd "${mydir}"
+mydir="$( cd -- "$( dirname -- "$0" )" && pwd )"
+cd -- "${mydir}"
 cd ..
 cd ..
 cd ..
 
+## Provides function tbbversion.
+# shellcheck source=../../libexec/tb-updater/version-validator
+## Resolved relative to this script, which shellcheck does not do from the
+## repository root the gate runs in. R-080 requires the relative spelling.
+##
+## FIXME: `--source-path=SCRIPTDIR` (where `SCRIPTDIR` is a literal, not a
+## placeholder) can be passed to shellcheck to ensure the relative resolution
+## works properly. This can also be set in a .shellcheckrc file. We should
+## enable this option and get rid of the below directive.
+# shellcheck disable=SC1091
 source ./usr/libexec/tb-updater/version-validator
 
 expected_version_list=(
@@ -29,9 +45,14 @@ expected_error_list=(
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser failed - file invalid or malicious)'
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser output does not look like a valid version number.)'
   'Rejected invalid RecommendedTBBVersions versions file. (version-parser output failed check_is_not_empty_and_only_one_line test.)'
-  'Rejected invalid RecommendedTBBVersions versions file. (version-parser output does not look like a valid version number.)'
+  'Rejected invalid RecommendedTBBVersions versions file. (Non-ASCII characters found in version using unicode-show.)'
 )
 
+## tbbversion comes from the sourced version-validator above, which shellcheck
+## cannot follow here.
+##
+## FIXME: Get rid of this directive once the source path issue is fixed.
+# shellcheck disable=SC2154
 for idx in "${!expected_version_list[@]}"; do
   disp_idx=$(( idx + 1 ))
 
