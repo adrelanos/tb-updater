@@ -15,19 +15,13 @@
 ## style-ok: no-strict
 ## This file is a library, 'source'd by update-torbrowser.
 
-# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
 ## The source= paths document where these live in the derivative-maker tree.
-## CI checks this repo out ALONE and installs no helper-scripts, so shellcheck
-## can follow neither the relative nor the runtime absolute path there.
-##
-## TODO: Let's just not run shellcheck unless we have a full derivative-maker
-## source tree.
-# shellcheck disable=SC1091
+## CI provides helper-scripts at the repo-sibling path (dm-consumer.yml
+## 'dist-ai-tests: helper-scripts: true'), so 'shellcheck -x' follows these
+## source= directives -- no SC1091 disable needed.
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
 source /usr/libexec/helper-scripts/strings.bsh
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
-##
-## TODO: See above TODO.
-# shellcheck disable=SC1091
 source /usr/libexec/helper-scripts/has.sh
 
 ## Resolve version-parser.py next to this file rather than by its installed

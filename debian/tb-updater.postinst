@@ -10,11 +10,16 @@ source /usr/libexec/helper-scripts/pre.bsh
 source /usr/libexec/helper-scripts/log_run_die.sh
 log_level='debug'
 
-set -e
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
 true "
 #####################################################################
-## INFO: BEGIN: $DPKG_MAINTSCRIPT_PACKAGE $DPKG_MAINTSCRIPT_NAME $*
+## INFO: BEGIN: ${DPKG_MAINTSCRIPT_PACKAGE:-} ${DPKG_MAINTSCRIPT_NAME:-} $*
 #####################################################################
 "
 
@@ -43,7 +48,7 @@ tb_anon_ws_dns_conf() {
        log notice "Checking if /var/lib/dpkg/info/whonix-ws-network-conf.prerm is an executable..."
        if test -x /var/lib/dpkg/info/whonix-ws-network-conf.prerm ; then
           log notice "Yes, /var/lib/dpkg/info/whonix-ws-network-conf.prerm is an executable."
-          [ -n "$tb_reenable_anon_ws_dns_conf" ] || tb_reenable_anon_ws_dns_conf=true
+          [ -n "${tb_reenable_anon_ws_dns_conf:-}" ] || tb_reenable_anon_ws_dns_conf=true
           tb_resolv_conf_debugging
 
           log notice "tb_anon_ws_dns_conf: Restore original /etc/resolv.conf by running /usr/libexec/tb-updater/chroot-pre ..."
@@ -55,7 +60,7 @@ tb_anon_ws_dns_conf() {
 }
 
 tb_chroot_pre_exit() {
-   if [ "$tb_reenable_anon_ws_dns_conf" = "true" ]; then
+   if [ "${tb_reenable_anon_ws_dns_conf:-}" = "true" ]; then
       log notice "tb_chroot_pre_exit: tb_reenable_anon_ws_dns_conf=true"
 
       log notice "tb_chroot_pre_exit: Restore whonix-ws-network-conf /etc/resolv.conf by running /usr/libexec/tb-updater/chroot-post ..."
@@ -67,44 +72,43 @@ tb_chroot_pre_exit() {
 }
 
 download() {
-   local in_chroot chroot_maybe tool_list tool_item
+   local in_chroot tool_item
+   local -a chroot_args tool_list
    in_chroot='false'
+   chroot_args=()
    if ischroot --default-false ; then
       in_chroot='true'
-      chroot_maybe="--is-chroot"
+      chroot_args=(--is-chroot)
    fi
 
-   tool_list="update-torbrowser update-mullvadbrowser"
+   tool_list=(update-torbrowser update-mullvadbrowser)
 
-   for tool_item in $tool_list ; do
-      if [ "$tool_item" = "update-mullvadbrowser" ]; then
+   for tool_item in "${tool_list[@]}" ; do
+      if [ "${tool_item}" = "update-mullvadbrowser" ]; then
          ## TODO: Add update-mullvadbrowser support.
          ## Skipping for now.
          continue
       fi
 
-      if [ "$tool_item" = "update-torbrowser" ]; then
+      if [ "${tool_item}" = "update-torbrowser" ]; then
          mkdir --parents "/var/cache/tb-binary"
-      elif [ "$tool_item" = "update-mullvadbrowser" ]; then
+      elif [ "${tool_item}" = "update-mullvadbrowser" ]; then
          mkdir --parents "/var/cache/mullvadbrowser-binary"
       fi
-
-      ## TODO:
-      #tpo_downloader_debug="$tpo_downloader_debug"
 
       if [ "${in_chroot}" = 'true' ]; then
          ## This variable may be set to 'false' by derivative-maker during an
          ## image build.
          [ -n "${tb_disable_anon_ws_dns_conf-}" ] || tb_disable_anon_ws_dns_conf='true'
 
-         if [ "$tb_disable_anon_ws_dns_conf" = 'true' ]; then
+         if [ "${tb_disable_anon_ws_dns_conf}" = 'true' ]; then
             tb_anon_ws_dns_conf
          fi
       fi
 
-      if ! log_run notice $tool_item $chroot_maybe --postinst; then
+      if ! log_run notice "${tool_item}" "${chroot_args[@]}" --postinst; then
          if [ "${in_chroot}" = 'true' ] \
-            && [ "${anon_shared_inst_tb}" = 'closed' ]; then
+            && [ "${anon_shared_inst_tb:-}" = 'closed' ]; then
             log error "update-torbrowser failed! Running in chroot and anon_shared_inst_tb is 'closed', therefore failing closed."
             exit 1
          else
@@ -118,11 +122,11 @@ download() {
    done
 }
 
-true "anon_shared_inst_tb: $anon_shared_inst_tb"
-true "tb_onion: $tb_onion"
-true "tb_disable_anon_ws_dns_conf: $tb_disable_anon_ws_dns_conf"
+true "anon_shared_inst_tb: ${anon_shared_inst_tb:-}"
+true "tb_onion: ${tb_onion:-}"
+true "tb_disable_anon_ws_dns_conf: ${tb_disable_anon_ws_dns_conf:-}"
 
-case "$1" in
+case "${1:-}" in
    configure)
       create_tb_updater_user_account
       download
@@ -132,7 +136,7 @@ case "$1" in
    ;;
 
    *)
-      log error "${DPKG_MAINTSCRIPT_NAME} called with unknown argument \`$1'" >&2
+      log error "${DPKG_MAINTSCRIPT_NAME:-} called with unknown argument \`${1:-}'" >&2
       exit 1
    ;;
 esac
@@ -149,7 +153,7 @@ true "INFO: Done with debhelper."
 
 true "
 #####################################################################
-## INFO: END  : $DPKG_MAINTSCRIPT_PACKAGE $DPKG_MAINTSCRIPT_NAME $*
+## INFO: END  : ${DPKG_MAINTSCRIPT_PACKAGE:-} ${DPKG_MAINTSCRIPT_NAME:-} $*
 #####################################################################
 "
 
