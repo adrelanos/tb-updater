@@ -17,9 +17,7 @@ if was_executed "${BASH_SOURCE[0]}"; then
 fi
 
 main() {
-   ## Sourced INSIDE main (not at top level): pre.bsh enables errtrace, installs
-   ## ERR/EXIT traps and loads config, so at top level it would leak into a shell
-   ## that sources this script. It is runtime setup, needed only when executing.
+   ## pre.bsh is only needed when executing.
    if [ -f /usr/libexec/helper-scripts/pre.bsh ]; then
       source /usr/libexec/helper-scripts/pre.bsh
    fi

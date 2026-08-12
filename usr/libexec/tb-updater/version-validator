@@ -13,23 +13,25 @@
 # shellcheck disable=SC2034,SC2154
 
 ## style-ok: no-strict
-## This file is 'source'd by update-torbrowser, so 'set -o errexit' and friends
-## here would change the SOURCING shell's behaviour globally rather than apply
-## to a shell of its own. The sourcer owns its strict-mode settings.
+## This file is a library, 'source'd by update-torbrowser.
 
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
 ## The source= paths document where these live in the derivative-maker tree.
 ## CI checks this repo out ALONE and installs no helper-scripts, so shellcheck
 ## can follow neither the relative nor the runtime absolute path there.
-# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
+##
+## TODO: Let's just not run shellcheck unless we have a full derivative-maker
+## source tree.
 # shellcheck disable=SC1091
 source /usr/libexec/helper-scripts/strings.bsh
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
+##
+## TODO: See above TODO.
 # shellcheck disable=SC1091
 source /usr/libexec/helper-scripts/has.sh
 
 ## Resolve version-parser.py next to this file rather than by its installed
 ## absolute path, so the test suite can exercise the code from a checkout.
-## Installed, the two resolve to the same file.
 tb_updater_libexec_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 version_parser="${tb_updater_libexec_dir}/version-parser.py"
 
@@ -53,13 +55,10 @@ tbbversion() {
    local tbb_version_remote_file tbb_version_output_file \
       tbb_parser_exit_code tbb_version_max_length tbb_version_length parsed_version
 
-   ## 'printf' is a bash builtin and is deliberately not listed: 'has' resolves
-   ## via 'command -v', which returns the bare name for a builtin rather than a
-   ## path, so testing it would always fail.
-   has sanitize-string unicode-show append grep-find-unicode-wrapper
-   ## 'has' resolves command NAMES via PATH; version_parser is an absolute
-   ## path, so it is checked directly.
-   test -x "${version_parser}"
+   ## 'has' can handle both command names (resolved via $PATH) and absolute
+   ## paths.
+   has sanitize-string unicode-show append grep-find-unicode-wrapper \
+      "${version_parser}"
 
    ## fallback
    set_stripped_tbb_version "UNKNOWN"
@@ -68,7 +67,6 @@ tbbversion() {
    ## Example see /usr/share/tb-updater/unit-test/RecommendedTBBVersions
    if [ ! -f "${RecommendedTBBVersions}" ]; then
       local MSG="${SCRIPTNAME} tbbversion: RecommendedTBBVersions: '${RecommendedTBBVersions}' does not exist."
-      stecho "${MSG}"
       log error "${MSG}"
       return 1
    fi
