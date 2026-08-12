@@ -14,7 +14,7 @@ Rules-Requires-Root: no
 
 Package: tb-updater
 Architecture: all
-Depends: bash (>= 4.4), msgcollector-gui, curl, psmisc, pv, libarchive-tools,
+Depends: msgcollector-gui, curl, psmisc, pv, libarchive-tools,
  jq, libdbus-glib-1-2, privleap, python3, acl, helper-scripts,
  sq, sqop, ${misc:Depends}
 Recommends: tb-starter, icon-pack-dist
