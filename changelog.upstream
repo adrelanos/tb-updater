@@ -1,3 +1,308 @@
+commit a83d1750bb6a7f667b78e92fff0abdcc89a34035
+Merge: 0203665 47537d8
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Wed Aug 12 03:56:36 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/ArrayBolt3/arraybolt3/trixie'
+
+commit 47537d8f53e6f2246e7cbdf1e54b72aa98bf1038
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Tue Aug 11 22:30:04 2026 -0400
+
+    Minor changes, comments, TODOs, and FIXMEs
+
+commit 5a664edad6087495d1af84e11fe8a9135e92234c
+Merge: 0203665 67b7180
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Mon Aug 10 23:47:36 2026 -0400
+
+    Merge branch 'ai' into arraybolt3/trixie
+
+commit 67b718029e1713d4aaf7548d319b650025a7a00b
+Author: claude (dev182 e09ec5cf-4ebf-4e1b-88e5-55fbac6ef1d3) <noreply@anthropic.com>
+Date:   Mon Aug 10 14:31:37 2026 -0400
+
+    update-torbrowser: best-effort error-log append; clear reaped extract pids
+
+    Two follow-ups to the error-path hardening:
+    - An existing but unwritable error log made 'append' fail inside
+      tb_error_handler under errexit, aborting it before the user-facing error
+      output. Make the append best-effort.
+    - last_pid_list kept the tar/pv pids after they were reaped, so a later signal
+      handler could SIGKILL a reused PID. Clear the list once the waits complete
+      (mirrors the curl path).
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+commit 3d3330d8d3000cd4bd7257e6a3db3e8ed86fe54d
+Author: claude (dev182 e09ec5cf-4ebf-4e1b-88e5-55fbac6ef1d3) <noreply@anthropic.com>
+Date:   Mon Aug 10 13:56:16 2026 -0400
+
+    tb-updater: fix reviewer-flagged fail paths and nounset landmines
+
+    Address triaged PR #29 reviewer findings across update-torbrowser and
+    version-validator:
+
+    - version-validator: reject absent/null/non-string/empty .version via
+      'jq -er ... | select(type=="string" and length>0)' so a malformed
+      installed version file enters the existing parse-failure branch
+      instead of falling through to detect_success=true.
+    - tb_error_handler: init output_opts=() and progressbaridx="" before the
+      ERR trap so the handler cannot itself abort on unset vars.
+    - tb_error_handler: create the .cache dir unconditionally, then test the
+      dir (not the not-yet-existing log path) for writability.
+    - download help: fix broken </code> close tag.
+    - tb_ex_funct: declare pid local; SIGKILL the tracked pid and each direct
+      child, not only grandchildren, so cleanup reaps the whole tree.
+    - use valid log level 'warn' (not 'warning').
+    - curl-not-found path: exit via tb_exit_function 1 instead of return 0.
+    - confirmation screen: init qubes_running_inside_template_vm_msg so the
+      message body stays defined outside a Qubes Template.
+    - dpkg compare-versions failure and RecommendedTBBVersions-missing paths:
+      call 'log error', not the undefined bare 'error'.
+    - unset-var diagnostic: reference the literal name, not the empty value.
+    - tb_extract: init pv/tar/pv_wrapper exit-code vars at function scope so
+      the failure-message block is safe on the TB_FORCE_INSTALL path.
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+commit 7daa0599c2598352add128d6648d7b555095d662
+Author: claude (dev179 34adc465-191d-4a9b-857a-2b62c4467b43) <noreply@anthropic.com>
+Date:   Mon Aug 10 12:06:27 2026 -0400
+
+    tb-updater: add the shopt half to the source-able guarded strict blocks
+
+    The guarded (was_executed) strict blocks enabled errexit/nounset/
+    pipefail/errtrace but omitted shopt -s inherit_errexit / shift_verbose.
+    Add both, completing errexit's guarantees ($() subshells respect it).
+
+commit d9541d8684ca7710fb8cb21ef54b2753191e02fc
+Author: claude (dev175 c2ca3e38-6ad5-4018-9e09-853679b2ef0a) <noreply@anthropic.com>
+Date:   Mon Aug 10 04:15:36 2026 -0400
+
+    update-torbrowser: validate tb_settings_folder via validate_safe_filename
+
+    The inline ^[a-z0-9._-]+$ pattern accepted a bare '.', '..', and any
+    '..'-containing value, so a crafted tb_settings_folder could still traverse out
+    of /etc // /usr/local/etc into arbitrary sourced .conf files. Reuse the
+    helper-scripts validate_safe_filename (already sourced) -- it rejects path
+    separators, '.', '..' and any '..' component while still accepting 'torbrowser.d'.
+    Addresses the CodeRabbit finding on this line.
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+commit bab98badf13c0f6a0c99cc9ab45fa2974f416b77
+Author: claude (dev175 c2ca3e38-6ad5-4018-9e09-853679b2ef0a) <noreply@anthropic.com>
+Date:   Mon Aug 10 02:47:11 2026 -0400
+
+    tb-updater chroot-pre/post: source pre.bsh inside main (ai-review P2)
+
+    pre.bsh enables errtrace, installs ERR/EXIT traps and loads config; at top
+    level it leaked into a shell that sourced the script, defeating the
+    source-able guard. Move it into main() -- runtime setup, needed only when
+    executed -- so sourcing the script has no side effects.
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+commit 2c42a36191e9822ab3291e5eaf4638806ab06ce6
+Author: claude (dev175 c2ca3e38-6ad5-4018-9e09-853679b2ef0a) <noreply@anthropic.com>
+Date:   Mon Aug 10 02:13:00 2026 -0400
+
+    tb-updater executables: source-able main() + was_executed form
+
+    Move top-level logic into main(); guard the strict header and the main call
+    with was_executed "${BASH_SOURCE[0]}" (helper-scripts check_runtime.bsh) so a
+    dist-ai test can source the script and drive its logic without running it or
+    leaking strict-mode. Globals stay global; function definitions stay top-level.
+    version-validator is left untouched (it is a sourced library, not an
+    executable). update-torbrowser already had the guard.
+
+    Scripts: update-i2pbrowser, update-mullvadbrowser, desktop-starter-wrapper,
+    dispvm, setpriv-tb-updater, chroot-pre, chroot-post.
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+commit fb4ed0581d282fcbab3a60621c20c2ff02cd4e90
+Author: claude (dev170 ad818220-b8bb-4205-b850-b65074e52454) <noreply@anthropic.com>
+Date:   Sat Aug 8 13:54:02 2026 -0400
+
+    update-torbrowser: clear the R-020 / SC2248 gate debt
+
+    551 SC2250 sites braced, plus the two SC2248 sites on output_tool. Both were
+    pre-existing: the gate checks CHANGED files, so this file passed only because
+    nobody had touched it, and the next one-line edit anywhere in it would have
+    failed on 553 unrelated findings.
+
+    The brace rewrite is mechanical and machine-verified, not hand-read:
+
+    - ~/strict-pass-tests/brace-fixer.py drives it from shellcheck's own JSON,
+      rewrites each line RIGHT TO LEFT by column so earlier offsets stay valid,
+      refuses to touch anything shellcheck did not report as SC2250, and re-runs
+      shellcheck afterwards so a reference hidden behind another on the same line
+      cannot be left behind.
+    - ~/strict-pass-tests/brace-verify.py then proves equivalence: strip
+      '${name}' back to '$name' in BOTH versions and require byte equality. Adding
+      braces around a simple reference is exactly what braces mean, so equality
+      after that normalisation admits no other kind of edit. It separately counts
+      escaped-and-braced '\${' sequences, because an escaped '\$name' is literal
+      text a user reads and normalising both sides would hide that change. Result:
+      551 braces added, otherwise byte-identical.
+    - Canaried in both directions: a one-space indent change and an escaped-dollar
+      rewrite each make the verifier fail; the real rewrite passes.
+
+    output_tool is a fixed absolute path, so quoting it changes no argv.
+
+    Also fixes a pre-existing failure on this branch that only an ISOLATED
+    checkout shows: version-validator sources two helper-scripts files by their
+    installed absolute path, which resolves on a developer machine and not on a CI
+    runner. source= directives added, paired with SC1091.
+
+    Evidence: unit_test 6/6 green before and after; pre-push-static --staged exit
+    0; ci-repro.sh --worktree kicksecure/tb-updater exit 0 (isolated single-repo
+    checkout with the installed helper paths hidden -- the condition CI has).
+
+    NOT claimed: no runtime emit test was built for update-torbrowser. The
+    equivalence proof above is a static one over the whole file, and the unit suite
+    covers the version-parsing paths only.
+
+    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+commit 29bf90734854baa89f01cb68c2378e63c148f030
+Author: claude (dev163 38f9745c-aed1-4fb4-b6ae-9899f20f8de2) <noreply@anthropic.com>
+Date:   Sat Aug 8 06:40:27 2026 -0400
+
+    Make the tb-updater unit test runnable from a checkout
+
+    - version-validator invoked version-parser.py by its installed absolute path,
+      so the suite died at case 1 on a checkout with tb-updater not installed. It
+      now resolves the parser next to itself; installed, both paths are the same
+      file.
+    - Case 6 expected the version-number pattern check to reject '15.0.3<BEL>',
+      but unicode-show rejects C0 control characters and runs first. The rejection
+      and the resulting UNKNOWN version are identical either way; only the message
+      differs. Expectation updated to the layer that actually fires.
+    - version-validator: braces per SC2250, no ';'-chained return per R-074, and
+      'has' instead of 'command -v' per R-090.
+    - 'style-ok: no-strict': this file is 'source'd, so a strict-mode block would
+      change the sourcing shell rather than a shell of its own.
+    - 'printf' is deliberately absent from the 'has' checks: 'command -v' returns
+      the bare name for a builtin, not a path, so 'has printf' can never succeed.
+
+    Suite now passes all 6 cases. Verified by canary: restoring the absolute
+    parser path dies at case 1, and stubbing version-parser.py to emit a fixed
+    version fails case 2.
+
+    ## AI-Assisted
+
+    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+commit 867a34253d60d598a0b3f54d52ef88957e87f728
+Author: claude (dev163 38f9745c-aed1-4fb4-b6ae-9899f20f8de2) <noreply@anthropic.com>
+Date:   Fri Aug 7 14:53:18 2026 -0400
+
+    restore 'set -x' dropped by the strict-mode pass
+
+    The R-010 conversion replaced each script's existing preamble wholesale and did
+    not carry 'set -x' across. That is a silent loss of diagnostic output, and for
+    several of these it is the only output there is:
+
+    - build-time scripts (hardened-kernel build / download / ci_test, tirdad
+      build.sh, initializer-dist chroot-scripts-post.d): the trace IS the build log,
+      so a failing invocation and its expanded arguments become unavailable exactly
+      when they are needed.
+    - boot-time scripts (libvirt-dist, repository-dist-initializer).
+    - scripts whose only messages are 'true "INFO: ..."' lines, which produce
+      nothing on their own -- removing xtrace silences them completely.
+    - test harnesses (tb-updater unit_test, sdwdate-gui fuzzer), where the trace is
+      the point.
+
+    It was also inconsistent: initializer-dist's 80_cleanup kept it while its four
+    siblings in the same directory lost it.
+
+    Nothing asked for this and no commit described it as intentional, so it is
+    restored everywhere it was active.
+
+    Found by codex on initializer-dist. The other 19 files came from auditing the
+    whole pass for the same pattern.
+
+    Testing
+    -------
+
+    Gate exit 0 in an ISOLATED checkout, all eleven packages.
+
+    Audit: ~/strict-pass-tests/audit-stripped-setx.sh, which compares every file
+    changed on an 'ai' branch against org-ai-assisted/master and reports any that
+    had 'set -x' and no longer do.
+
+      before:  examined 43 package(s) on branch ai, 342 changed file(s); 23 stripped
+      after:   examined 43 package(s) on branch ai, 342 changed file(s);  0 stripped
+
+    The audit prints its own coverage, and fails outright if it examines zero
+    packages. Its first version tested '[ -d "$pkg/.git" ]', which is false for a
+    submodule -- .git is a FILE there -- so it skipped all 43 and reported nothing
+    stripped. A count that can be read is the difference between "clean" and "never
+    looked".
+
+commit 0c693e910e0c831dbc49ed9f0c77f44580481d6c
+Author: claude (dev163 38f9745c-aed1-4fb4-b6ae-9899f20f8de2) <noreply@anthropic.com>
+Date:   Fri Aug 7 11:17:33 2026 -0400
+
+    tb-updater: R-010 strict mode for the 2 test scripts
+
+    Files: usr/share/tb-updater/{test-script,unit_test}.
+
+    No nounset traps. The change is the preamble, removal of the left-on 'set -x'
+    in unit_test, '--' before the 'cd' and 'dirname' operands, braces, and two
+    waivers: SC1091 on the sourced version-validator (R-080 requires the relative
+    source= spelling, which shellcheck cannot resolve from the repository root the
+    gate runs in) and SC2154 for the three variables that fragment sets and this
+    script consumes.
+
+    Testing
+    -------
+
+    Gate exit 0 in an ISOLATED checkout.
+
+    unit_test is a REAL test with fixtures committed alongside it, so it was run as
+    ITSELF rather than through a stub harness -- a stronger check than anything a
+    mock could give. It needs /usr/libexec/tb-updater/version-parser.py at an
+    absolute path; without it the script aborts silently at the first 'command -v'
+    and BOTH sides come back exit 1 having tested nothing. Installing it from this
+    repo is what makes the run meaningful.
+
+    With the dependency present, and 'set -x' stripped from the pre-change copy so
+    the two are compared on behaviour rather than tracing:
+
+      pre-change:  reaches test 6, exit 1
+      post-change: reaches test 6, exit 1
+
+    Identical -- tests 1 through 5 pass on both sides.
+
+    SEPARATE PRE-EXISTING FAILURE, not caused by this change
+    ---------------------------------------------------------
+
+    unit_test case 6 fails on master. It expects
+
+      'Rejected invalid RecommendedTBBVersions versions file.
+       (version-parser output does not look like a valid version number.)'
+
+    and the validator now produces
+
+      'Rejected invalid RecommendedTBBVersions versions file.
+       (Non-ASCII characters found in version using unicode-show.)'
+
+    Both are rejections, so the SECURITY behaviour is intact -- a malicious version
+    string is still refused -- but the test's expected message has drifted from the
+    implementation. Reported rather than "fixed" by editing the expectation to
+    match: which of the two messages is correct is a question for whoever added the
+    unicode-show check.
+
+commit 0203665e9f37904b89ead7300801bb1f7cab67b3
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Sat Aug 1 08:13:01 2026 +0000
+
+    bumped changelog version
+
 commit e4b1fe303c215bcb6c2023933fb96340903f3ae4
 Merge: 81d307e db61a43
 Author: Patrick Schleizer <adrelanos@whonix.org>
