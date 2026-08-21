@@ -13,23 +13,24 @@ set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 who_ami="$(whoami)"
 
-## shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/wc-test.sh
-source /usr/libexec/helper-scripts/wc-test.sh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/wc-test.sh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/wc-test.sh
 
-## shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
-source /usr/libexec/helper-scripts/has.sh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/has.sh
 
-## shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/log_run_die.sh
-source /usr/libexec/helper-scripts/log_run_die.sh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/log_run_die.sh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/log_run_die.sh
 
-## shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/light_sleep.bsh
-source /usr/libexec/helper-scripts/light_sleep.bsh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/light_sleep.bsh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/light_sleep.bsh
 
-## shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/lockfile.sh
-source /usr/libexec/helper-scripts/lockfile.sh
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/lockfile.sh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/lockfile.sh
 
 has setfacl
 
@@ -133,9 +134,13 @@ stash_tarball_to_stash() {
   unicode-show "${TBB_SANDBOX_RESUME_HINT_FILENAME}" &>/dev/null || return 0
   while read -r untrusted_hint_line; do
     case "${untrusted_hint_line}" in
-      TBB_SIG_FILENAME=*) ;;
-      TBB_PACKAGE_FILENAME=*) ;;
-      *) return 0 ;;
+      TBB_SIG_FILENAME=*)
+        ;;
+      TBB_PACKAGE_FILENAME=*)
+        ;;
+      *)
+        return 0
+        ;;
     esac
     [[ "${untrusted_hint_line}" =~ ([^=]*)=(.*) ]] || return 0
     hint_key="${BASH_REMATCH[1]:-}"
@@ -288,7 +293,7 @@ exit_clean() {
   exit_code="${1:-}"
   [ -z "${exit_code}" ] && exit_code='0'
   trap '' EXIT INT TERM
-  if [ "$exit_code" = "0" ]; then
+  if [ "${exit_code}" = "0" ]; then
     log notice "END: Success."
   else
     log error "END: Failure."
@@ -391,7 +396,7 @@ sandbox_update_torbrowser() {
     if [ "${gui_enabled}" != 'true' ]; then
       break
     fi
-    if [ -z "$SUDO_USER" ]; then
+    if [ -z "${SUDO_USER}" ]; then
       log notice "Cannot determine calling user, skipping GUI setup, ok."
       break
     fi

@@ -4,7 +4,7 @@
 ## See the file COPYING for copying conditions.
 
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/check_runtime.bsh
-source /usr/libexec/helper-scripts/check_runtime.bsh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/check_runtime.bsh
 
 if was_executed "${BASH_SOURCE[0]}"; then
    set -x
@@ -14,12 +14,13 @@ if was_executed "${BASH_SOURCE[0]}"; then
    set -o pipefail
    shopt -s inherit_errexit
    shopt -s shift_verbose
+   export LC_ALL=C
 fi
 
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/strings.bsh
-source /usr/libexec/helper-scripts/strings.bsh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/strings.bsh
 # shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/has.sh
-source /usr/libexec/helper-scripts/has.sh
+source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/helper-scripts/has.sh
 
 main() {
    ## The account "user" fallback is intentional.
