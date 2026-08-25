@@ -18,16 +18,11 @@ cd ..
 cd ..
 cd ..
 
-## Provides function tbbversion.
+## Provides function tbbversion and its result variables. 'shellcheck -x'
+## follows this source= directive (helper-scripts provided in CI via
+## dm-consumer.yml 'dist-ai-tests: helper-scripts: true'), so no SC1091 /
+## SC2154 disable is needed. R-080 requires the relative source= spelling.
 # shellcheck source=../../libexec/tb-updater/version-validator
-## Resolved relative to this script, which shellcheck does not do from the
-## repository root the gate runs in. R-080 requires the relative spelling.
-##
-## FIXME: `--source-path=SCRIPTDIR` (where `SCRIPTDIR` is a literal, not a
-## placeholder) can be passed to shellcheck to ensure the relative resolution
-## works properly. This can also be set in a .shellcheckrc file. We should
-## enable this option and get rid of the below directive.
-# shellcheck disable=SC1091
 source ./usr/libexec/tb-updater/version-validator
 
 expected_version_list=(
@@ -48,11 +43,6 @@ expected_error_list=(
   'Rejected invalid RecommendedTBBVersions versions file. (Non-ASCII characters found in version using unicode-show.)'
 )
 
-## tbbversion comes from the sourced version-validator above, which shellcheck
-## cannot follow here.
-##
-## FIXME: Get rid of this directive once the source path issue is fixed.
-# shellcheck disable=SC2154
 for idx in "${!expected_version_list[@]}"; do
   disp_idx=$(( idx + 1 ))
 

@@ -710,7 +710,9 @@ tb_settings_qubes_common_templatevm() {
 }
 
 tb_settings_not_templatevm() {
-   ## TODO: Unused, remove?
+   ## Intentional no-op hook. Called on the non-Qubes-Template path,
+   ## symmetric with tb_settings_qubes_common_templatevm; kept as an
+   ## extension point for non-template-specific settings.
    true
 }
 
@@ -1063,35 +1065,6 @@ tb_create_folders() {
    safe-rm --recursive --force -- "${TEMP_DIR}"
    mkdir --parents -- "${TEMP_DIR}"
 }
-
-# tb_skip_if_higher_or_equal_version_already_downloaded() {
-#    ## Do this only when using --postinst.
-#    if [ ! "${tb_postinst:-}" = "true" ]; then
-#       true "INFO: Not using --postinst, therefore skipping ${FUNCNAME[0]}."
-#       return 0
-#    fi
-#    if [ "${tbb_version_previous_downloaded_version_stripped:-}" = "none" ]; then
-#       true "INFO: Could not determine tbb_version_previous_downloaded_version_stripped (set to 'none'), therefore skipping ${FUNCNAME[0]}."
-#       return 0
-#    fi
-#    if [ "${tbb_hardcoded_version:-}" = "" ]; then
-#       true "INFO: tbb_hardcoded_version is empty, therefore skipping ${FUNCNAME[0]}."
-#       return 0
-#    fi
-#    if dpkg --compare-versions -- "$tbb_version_previous_downloaded_version_stripped" ge "$tbb_hardcoded_version" ; then
-#       log notice "Previously downloaded version: '$tbb_version_previous_downloaded_version_stripped'"
-#       log notice "Previously downloaded version is greater or equal tbb_hardcoded_version, good, ok."
-#    fi
-#
-#    ## TODO: Does not belong here?
-#    ## Being careful with deletion.
-# #    if [ "${tb_downloaded_files_folder:-}" = "$tb_global_binary_dir/.cache/$tb_install_folder/files" ]; then
-# #       log notice "No need to keep older versions in Qubes root image. Saving disk space. Therefore deleting..."
-# #       printf '%s\n' "safe-rm -r -f -- '$tb_downloaded_files_folder'"
-# #       safe-rm -r -f -- "$tb_downloaded_files_folder"
-# #       mkdir --parents -- "$tb_downloaded_files_folder"
-# #    fi
-# }
 
 tb_connectivity_checks_interfaces() {
    local MSG
@@ -2517,7 +2490,6 @@ main_function() {
       return 0
    fi
 
-   #tb_run_function tb_skip_if_higher_or_equal_version_already_downloaded
    tb_run_function tb_connectivity_checks_interfaces
    tb_run_function tb_connectivity_checks_tor
    tb_run_function tb_connectivity_checks_curl

@@ -1,0 +1,14 @@
+## The postinst enables errexit via the long-form 'set -o errexit' in its
+## strict-mode block. lintian's scripts check only matches the short 'set -e',
+## so it wrongly reports the script as ignoring errors. False positive.
+tb-updater: maintainer-script-ignores-errors [postinst]
+
+## The placeholder ships /var/cache/tb-updater so Qubes bind-dirs.sh can bind
+## the directory for AppVM persistence; bind-dirs cannot create a missing
+## target. See the placeholder file. Deliberate.
+tb-updater: file-in-unusual-dir [var/cache/tb-updater/placeholder]
+
+## The postinst tests for /var/lib/dpkg/info/whonix-ws-network-conf.prerm to
+## detect whether whonix-ws-network-conf is installed before restoring its
+## resolv.conf. Deliberate presence check, not a database modification.
+tb-updater: uses-dpkg-database-directly [postinst]
