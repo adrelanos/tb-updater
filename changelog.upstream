@@ -1,3 +1,36 @@
+commit c4ed06f0a29ecb9df84772fb26deebc87c4939d7
+Merge: 1a474db 3f419ae
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Mon Aug 24 23:54:58 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/org-ai-assisted/ai'
+
+commit 1a474db29a68522b933c28b0aa9cbae81d360f7c
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Fri Aug 21 09:03:08 2026 +0000
+
+    bumped changelog version
+
+commit 3f419ae1502c77cddef9153b2e05bd55cabe614d
+Author: claude (dev272 e8b76afb-795c-4739-8ebd-023de854021e) <noreply@anthropic.com>
+Date:   Fri Aug 21 04:50:31 2026 -0400
+
+    tb-updater: source helper-scripts via HELPER_SCRIPTS_PATH
+
+    - update-i2pbrowser, update-mullvadbrowser, desktop-starter-wrapper,
+      chroot-pre, chroot-post, setpriv-tb-updater, dispvm, version-validator,
+      sandbox-update-torbrowser: source "${HELPER_SCRIPTS_PATH:-}"/usr/libexec/
+      helper-scripts/<f> so shellcheck -x follows the '# shellcheck source='
+      directive (helper-scripts provided at the repo sibling in CI).
+    - setpriv-tb-updater, sandbox-update-torbrowser: normalize the inert
+      '## shellcheck source=' directives to '# shellcheck source='.
+    - version-validator: drop the stale sibling-repo note about SC1091.
+    - completed pre-existing whole-file style debt to clear the gate:
+      R-010 export LC_ALL=C in the strict blocks, R-070 ';;' on its own line,
+      SC2250 variable braces.
+
+    Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
 commit 36c82295b071330ecb863023ca06231e10597ad7
 Author: Patrick Schleizer <adrelanos@whonix.org>
 Date:   Fri Aug 21 02:19:32 2026 -0400
@@ -9,6 +42,72 @@ Author: Patrick Schleizer <adrelanos@whonix.org>
 Date:   Mon Aug 17 04:27:54 2026 +0000
 
     bumped changelog version
+
+commit 60d194a38393dcba6641976d376ec9b79522d002
+Author: claude (dev189 b0788c60-b349-4240-810b-f51b0043a12f) <noreply@anthropic.com>
+Date:   Wed Aug 12 05:40:42 2026 -0400
+
+    tb-updater: lintian-overrides for the strict-mode postinst + deliberate tags
+
+    - maintainer-script-ignores-errors: false positive -- the postinst enables
+      errexit via long-form 'set -o errexit', which lintian's scripts check does
+      not recognize (it matches only the short 'set -e').
+    - file-in-unusual-dir: the /var/cache/tb-updater placeholder is shipped on
+      purpose for Qubes bind-dirs.sh (cannot create a missing bind target).
+    - uses-dpkg-database-directly: deliberate presence check for
+      whonix-ws-network-conf's prerm; no database modification.
+
+    Verified: genmkfile deb-pkg (cowbuilder) builds lintian pedantic-clean.
+
+commit f58b7e0103ac3471e88e8562c1ef48f77e3ae440
+Author: claude (dev189 b0788c60-b349-4240-810b-f51b0043a12f) <noreply@anthropic.com>
+Date:   Wed Aug 12 05:09:05 2026 -0400
+
+    tb-updater: drop bash (>= 4.4) dependency
+
+    Not required: supported Debian (trixie) ships a recent-enough bash, and
+    earlier Debian / bash versions are unsupported, so the version-gated
+    dependency adds nothing.
+
+commit e9166a6c7bc9cccbaa4d32a604598eab85e21d9c
+Author: claude (dev189 b0788c60-b349-4240-810b-f51b0043a12f) <noreply@anthropic.com>
+Date:   Wed Aug 12 04:54:37 2026 -0400
+
+    tb-updater: declare bash (>= 4.4) dependency
+
+    The shipped scripts (update-torbrowser, the chroot hooks, and now the
+    postinst maintainer script) use 'shopt -s inherit_errexit', a bash
+    4.4+ builtin in the strict-mode preamble. ${misc:Depends} does not
+    supply a bash version, so declare it explicitly; a maintainer script
+    dying in its preamble on older bash would fail package configuration.
+
+commit fc5488183270a8a3f89f7105d1a00869bf3fe38a
+Author: claude (dev189 b0788c60-b349-4240-810b-f51b0043a12f) <noreply@anthropic.com>
+Date:   Wed Aug 12 04:51:03 2026 -0400
+
+    tb-updater: resolve TODO/FIXME markers; full strict-mode postinst
+
+    - postinst: convert to the full strict-mode block (errexit, nounset,
+      pipefail, errtrace, inherit_errexit, shift_verbose); guard every
+      config-var reference (anon_shared_inst_tb, tb_onion, tb_disable/
+      tb_reenable_anon_ws_dns_conf, DPKG_MAINTSCRIPT_*, "$1") with
+      ${var:-} so an ordinary install does not abort under nounset;
+      array-ise tool_list / chroot_args; brace + quote all references.
+      Drop the dead #tpo_downloader_debug self-assignment + empty TODO.
+    - update-torbrowser: remove the dead commented-out
+      tb_skip_if_higher_or_equal_version_already_downloaded function and
+      its orphaned commented call; correct the false "Unused, remove?"
+      note on tb_settings_not_templatevm (it is called -- an intentional
+      no-op hook).
+    - version-validator / unit_test: opt into helper-scripts sibling
+      checkout (dm-consumer.yml 'dist-ai-tests: helper-scripts: true') so
+      shellcheck -x follows the source= directives; drop the now-needless
+      SC1091 / SC2154 disables and their aspirational TODO/FIXMEs.
+
+    Regression coverage in dist-ai (tb-updater-tests): drive the real
+    postinst end-to-end under its own strict mode with the root/network
+    externals stubbed, asserting no unbound-variable abort with all config
+    vars unset.
 
 commit a83d1750bb6a7f667b78e92fff0abdcc89a34035
 Merge: 0203665 47537d8
